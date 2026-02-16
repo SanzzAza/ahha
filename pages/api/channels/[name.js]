@@ -1,0 +1,32 @@
+import { scrapeChannel } from '../../../lib/scraper';
+import { CHANNELS } from '../../../lib/constants';
+
+export default async function handler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+
+  const { name } = req.query;
+
+  if (!name) {
+    return res.status(400).json({ success: false, error: 'Channel name is required' });
+  }
+
+  // Validate channel name
+  const validChannels = CHANNELS.map(c => c.slug);
+  if (!validChannels.includes(name)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid channel name',
+      valid_channels: validChannels,
+    });
+  }
+
+  try {
+    const result = await scrapeChannel(name);
+    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
+    return res.status(result.success ? 200 : 500).json(result);
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+}
